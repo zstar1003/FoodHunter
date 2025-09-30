@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>地铁站餐馆搜索</title>
+    <title>美食猎手 - 发现地铁站周边美食</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
     <script src="https://webapi.amap.com/maps?v=2.0&key=8ed6421d08c0d14a352e579594a31021"></script>
+    <script src="https://webapi.amap.com/ui/1.1/main.js"></script>
     <style>
         * {
             margin: 0;
@@ -16,40 +18,74 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
+            background: #f9f9f9;
         }
         .header {
             padding: 20px;
-            background: #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, #FF6B6B 0%, #FF8E8E 100%);
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
             z-index: 100;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .logo {
+            width: 50px;
+            height: 50px;
+        }
+        .brand-name {
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .brand-tagline {
+            font-size: 14px;
+            color: rgba(255,255,255,0.9);
         }
         .search-bar {
             display: flex;
             gap: 10px;
-            max-width: 600px;
+            max-width: 700px;
         }
-        input, button {
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+        select, button {
+            padding: 12px 15px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
             font-size: 14px;
+            background: white;
+            transition: all 0.3s;
         }
-        input {
+        select {
             flex: 1;
+            cursor: pointer;
+        }
+        select:hover, select:focus {
+            border-color: #FF6B6B;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
         }
         button {
-            background: #1890ff;
-            color: white;
+            background: white;
+            color: #FF6B6B;
             border: none;
             cursor: pointer;
-            min-width: 80px;
+            min-width: 120px;
+            font-weight: bold;
         }
         button:hover {
-            background: #40a9ff;
+            background: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
         button:disabled {
-            background: #ccc;
+            background: #ddd;
+            color: #999;
             cursor: not-allowed;
+            transform: none;
         }
         .container {
             display: flex;
@@ -75,8 +111,8 @@
             transform: translateY(-2px);
         }
         .restaurant-item.active {
-            background: #e6f7ff;
-            border-left: 3px solid #1890ff;
+            background: #ffe6e6;
+            border-left: 3px solid #FF6B6B;
         }
         .restaurant-name {
             font-weight: bold;
@@ -121,15 +157,30 @@
 </head>
 <body>
     <div class="header">
+        <div class="brand">
+            <img src="logo.svg" alt="美食猎手" class="logo">
+            <div>
+                <div class="brand-name">🎯 美食猎手</div>
+                <div class="brand-tagline">发现地铁站周边的美味餐厅</div>
+            </div>
+        </div>
         <div class="search-bar">
-            <input type="text" id="cityInput" placeholder="请输入城市名称，例如：西安、北京、上海" value="西安">
-            <button id="searchBtn">搜索餐馆</button>
+            <select id="provinceSelect">
+                <option value="">请选择省份</option>
+            </select>
+            <select id="citySelect" disabled>
+                <option value="">请先选择省份</option>
+            </select>
+            <select id="districtSelect" disabled>
+                <option value="">请先选择城市</option>
+            </select>
+            <button id="searchBtn" disabled>🔍 搜索美食</button>
         </div>
     </div>
 
     <div class="container">
         <div class="sidebar" id="restaurantList">
-            <div class="empty">请输入城市并点击搜索</div>
+            <div class="empty">请选择省市区并点击搜索</div>
         </div>
         <div class="map-container">
             <div id="map"></div>
@@ -141,15 +192,136 @@
         let map;
         let markers = [];
         let restaurants = [];
+        let districtSearch;
+        let selectedCity = '';
+
+        // 省市区数据（主要城市）
+        const regions = {
+            "陕西省": ["西安市", "咸阳市", "宝鸡市"],
+            "北京市": ["北京市"],
+            "上海市": ["上海市"],
+            "天津市": ["天津市"],
+            "重庆市": ["重庆市"],
+            "广东省": ["广州市", "深圳市", "东莞市", "佛山市", "珠海市"],
+            "江苏省": ["南京市", "苏州市", "无锡市", "常州市", "南通市"],
+            "浙江省": ["杭州市", "宁波市", "温州市", "绍兴市"],
+            "四川省": ["成都市", "绵阳市", "德阳市"],
+            "湖北省": ["武汉市", "襄阳市", "宜昌市"],
+            "湖南省": ["长沙市", "株洲市", "湘潭市"],
+            "河南省": ["郑州市", "洛阳市", "开封市"],
+            "山东省": ["济南市", "青岛市", "烟台市", "潍坊市"],
+            "河北省": ["石家庄市", "唐山市", "秦皇岛市"],
+            "辽宁省": ["沈阳市", "大连市", "鞍山市"],
+            "吉林省": ["长春市", "吉林市"],
+            "黑龙江省": ["哈尔滨市", "齐齐哈尔市"],
+            "福建省": ["福州市", "厦门市", "泉州市"],
+            "安徽省": ["合肥市", "芜湖市", "蚌埠市"],
+            "江西省": ["南昌市", "赣州市", "九江市"],
+            "云南省": ["昆明市", "大理市"],
+            "贵州省": ["贵阳市", "遵义市"],
+            "甘肃省": ["兰州市"],
+            "山西省": ["太原市", "大同市"]
+        };
 
         // 初始化地图
         function initMap() {
             map = new AMap.Map('map', {
                 zoom: 12,
-                center: [108.93977, 34.34127], // 西安市中心
+                center: [108.93977, 34.34127],
                 mapStyle: 'amap://styles/normal'
             });
+
+            // 初始化行政区划查询
+            AMapUI.loadUI(['misc/DistrictExplorer'], function(DistrictExplorer) {
+                districtSearch = new DistrictExplorer();
+            });
         }
+
+        // 初始化省份选择器
+        function initProvinceSelect() {
+            const provinceSelect = document.getElementById('provinceSelect');
+            Object.keys(regions).forEach(province => {
+                const option = document.createElement('option');
+                option.value = province;
+                option.textContent = province;
+                provinceSelect.appendChild(option);
+            });
+        }
+
+        // 省份选择变化
+        document.addEventListener('DOMContentLoaded', function() {
+            const provinceSelect = document.getElementById('provinceSelect');
+            const citySelect = document.getElementById('citySelect');
+            const districtSelect = document.getElementById('districtSelect');
+            const searchBtn = document.getElementById('searchBtn');
+
+            initProvinceSelect();
+
+            provinceSelect.addEventListener('change', function() {
+                const province = this.value;
+                citySelect.innerHTML = '<option value="">请选择城市</option>';
+                districtSelect.innerHTML = '<option value="">请先选择城市</option>';
+                districtSelect.disabled = true;
+                searchBtn.disabled = true;
+
+                if (province && regions[province]) {
+                    citySelect.disabled = false;
+                    regions[province].forEach(city => {
+                        const option = document.createElement('option');
+                        option.value = city;
+                        option.textContent = city;
+                        citySelect.appendChild(option);
+                    });
+                } else {
+                    citySelect.disabled = true;
+                }
+            });
+
+            citySelect.addEventListener('change', async function() {
+                const city = this.value;
+                districtSelect.innerHTML = '<option value="">加载中...</option>';
+                districtSelect.disabled = true;
+                searchBtn.disabled = true;
+
+                if (city) {
+                    selectedCity = city;
+                    // 使用高德地图API获取区县
+                    try {
+                        const url = `https://restapi.amap.com/v3/config/district?key=${AMAP_KEY}&keywords=${city}&subdistrict=1&extensions=base`;
+                        const response = await fetch(url);
+                        const data = await response.json();
+
+                        districtSelect.innerHTML = '<option value="">请选择区县</option>';
+
+                        if (data.districts && data.districts[0]) {
+                            const districts = data.districts[0].districts || [];
+                            if (districts.length > 0) {
+                                districtSelect.disabled = false;
+                                districts.forEach(district => {
+                                    const option = document.createElement('option');
+                                    option.value = district.name;
+                                    option.textContent = district.name;
+                                    districtSelect.appendChild(option);
+                                });
+                            } else {
+                                // 如果没有区县，直接使用城市
+                                districtSelect.innerHTML = '<option value="">无需选择区县</option>';
+                                searchBtn.disabled = false;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('获取区县失败:', error);
+                        districtSelect.innerHTML = '<option value="">加载失败</option>';
+                    }
+                } else {
+                    districtSelect.innerHTML = '<option value="">请先选择城市</option>';
+                }
+            });
+
+            districtSelect.addEventListener('change', function() {
+                searchBtn.disabled = !this.value && districtSelect.options.length > 1;
+            });
+        });
 
         // 清除地图上的标记
         function clearMarkers() {
@@ -262,11 +434,18 @@
 
         // 搜索餐馆
         async function searchRestaurants() {
-            const city = document.getElementById('cityInput').value.trim();
+            const citySelect = document.getElementById('citySelect');
+            const districtSelect = document.getElementById('districtSelect');
+            const city = citySelect.value;
+            const district = districtSelect.value;
+
             if (!city) {
-                alert('请输入城市名称');
+                alert('请选择城市');
                 return;
             }
+
+            // 使用区县或城市进行搜索
+            const searchArea = district || city;
 
             const btn = document.getElementById('searchBtn');
             btn.disabled = true;
@@ -278,9 +457,9 @@
 
             try {
                 // 第一步：获取地铁站
-                const stations = await getMetroStations(city);
+                const stations = await getMetroStations(searchArea);
                 if (stations.length === 0) {
-                    listDiv.innerHTML = '<div class="empty">该城市未找到地铁站</div>';
+                    listDiv.innerHTML = '<div class="empty">该区域未找到地铁站</div>';
                     return;
                 }
 
@@ -332,7 +511,7 @@
                 listDiv.innerHTML = '<div class="empty">搜索出错，请重试</div>';
             } finally {
                 btn.disabled = false;
-                btn.textContent = '搜索餐馆';
+                btn.textContent = '🔍 搜索美食';
             }
         }
 
@@ -340,11 +519,6 @@
         window.onload = () => {
             initMap();
             document.getElementById('searchBtn').onclick = searchRestaurants;
-            document.getElementById('cityInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    searchRestaurants();
-                }
-            });
         };
     </script>
 </body>
