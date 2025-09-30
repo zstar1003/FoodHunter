@@ -7,7 +7,6 @@
     <title>美食猎手 - 发现地铁站周边美食</title>
     <link rel="icon" type="image/svg+xml" href="logo.svg">
     <script src="https://webapi.amap.com/maps?v=2.0&key=8ed6421d08c0d14a352e579594a31021"></script>
-    <script src="https://webapi.amap.com/ui/1.1/main.js"></script>
     <style>
         * {
             margin: 0;
@@ -479,7 +478,6 @@
         let map;
         let markers = [];
         let restaurants = [];
-        let districtSearch;
         let selectedCity = '';
         let selectedDistrict = '';
         let selectedAdcode = ''; // 存储区县的adcode
@@ -518,11 +516,6 @@
                 zoom: 12,
                 center: [108.93977, 34.34127],
                 mapStyle: 'amap://styles/normal'
-            });
-
-            // 初始化行政区划查询
-            AMapUI.loadUI(['misc/DistrictExplorer'], function(DistrictExplorer) {
-                districtSearch = new DistrictExplorer();
             });
         }
 
@@ -575,9 +568,9 @@
 
                 if (city) {
                     selectedCity = city;
-                    // 使用高德地图API获取区县及其adcode
+                    // 使用高德地图区划查询API获取区县及其adcode
                     try {
-                        const url = `${WORKER_URL}/api/v3/place/text?keywords=${city}&subdistrict=1&extensions=base`;
+                        const url = `${WORKER_URL}/api/v3/config/district?keywords=${city}&subdistrict=1&extensions=base`;
                         const response = await fetch(url);
                         const data = await response.json();
 
@@ -678,7 +671,7 @@
 
         // 搜索附近餐馆
         async function searchNearbyRestaurants(location, radius = 1000) {
-            const url = `${WORKER_URL}/api/v3/place/text?location=${location}&keywords=餐馆&radius=${radius}&offset=50&page=1&extensions=all`;
+            const url = `${WORKER_URL}/api/v3/place/around?location=${location}&keywords=餐馆&radius=${radius}&offset=50&page=1&extensions=all`;
             const response = await fetch(url);
             const data = await response.json();
             return data.pois || [];
