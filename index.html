@@ -288,6 +288,183 @@
             font-weight: 500;
             text-align: center;
         }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            body {
+                height: 100dvh; /* 使用动态视口高度，避免移动端地址栏问题 */
+            }
+
+            .header {
+                padding: 16px;
+            }
+
+            .brand {
+                gap: 12px;
+                margin-bottom: 16px;
+            }
+
+            .logo {
+                width: 40px;
+                height: 40px;
+            }
+
+            .brand-name {
+                font-size: 24px;
+            }
+
+            .brand-tagline {
+                font-size: 12px;
+            }
+
+            .search-bar {
+                flex-direction: column;
+                gap: 8px;
+                max-width: 100%;
+            }
+
+            select,
+            button {
+                padding: 12px 14px;
+                font-size: 15px; /* 移动端稍大的字体更易点击 */
+            }
+
+            button {
+                min-width: auto;
+                width: 100%;
+            }
+
+            .container {
+                flex-direction: column;
+                padding: 0;
+                gap: 0;
+            }
+
+            .sidebar {
+                width: 100%;
+                border-radius: 0;
+                max-height: 40vh; /* 移动端列表占40%高度 */
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch; /* iOS平滑滚动 */
+            }
+
+            .sidebar::-webkit-scrollbar {
+                width: 4px;
+            }
+
+            .map-container {
+                flex: 1;
+                border-radius: 0;
+                min-height: 50vh; /* 地图至少占50%高度 */
+            }
+
+            .restaurant-item {
+                padding: 14px 16px;
+            }
+
+            .restaurant-name {
+                font-size: 14px;
+            }
+
+            .restaurant-rank {
+                min-width: 20px;
+                height: 20px;
+                font-size: 11px;
+            }
+
+            .restaurant-rating {
+                font-size: 13px;
+            }
+
+            .restaurant-address {
+                font-size: 12px;
+            }
+
+            .stats {
+                padding: 12px;
+                font-size: 12px;
+            }
+
+            .loading,
+            .empty {
+                padding: 24px 16px;
+                font-size: 13px;
+            }
+
+            .loading::before,
+            .empty::before {
+                font-size: 36px;
+            }
+
+            .progress {
+                padding: 10px 12px;
+                margin: 6px;
+                font-size: 11px;
+            }
+
+            /* 移动端优化触摸区域 */
+            select:hover {
+                transform: none; /* 移动端禁用hover动画 */
+            }
+
+            button:hover:not(:disabled) {
+                transform: none;
+            }
+
+            /* 移动端地图信息窗口优化 */
+            .amap-info-content {
+                font-size: 14px !important;
+            }
+        }
+
+        /* 平板适配 */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .header {
+                padding: 20px 24px;
+            }
+
+            .search-bar {
+                max-width: 100%;
+            }
+
+            .sidebar {
+                width: 320px;
+            }
+
+            .container {
+                padding: 12px;
+                gap: 12px;
+            }
+        }
+
+        /* 横屏适配 */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .sidebar {
+                max-height: 35vh;
+            }
+
+            .map-container {
+                min-height: 60vh;
+            }
+
+            .brand {
+                margin-bottom: 12px;
+            }
+
+            .search-bar {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            select {
+                flex: 1 1 30%;
+                min-width: 120px;
+            }
+
+            button {
+                flex: 1 1 100%;
+            }
+        }
     </style>
 </head>
 
