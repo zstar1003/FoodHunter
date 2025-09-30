@@ -330,6 +330,8 @@
         let restaurants = [];
         let districtSearch;
         let selectedCity = '';
+        let selectedDistrict = '';
+        let selectedAdcode = ''; // 存储区县的adcode
 
         // 省市区数据（主要城市）
         const regions = {
@@ -418,10 +420,11 @@
                 districtSelect.innerHTML = '<option value="">加载中...</option>';
                 districtSelect.disabled = true;
                 searchBtn.disabled = true;
+                selectedAdcode = ''; // 重置adcode
 
                 if (city) {
                     selectedCity = city;
-                    // 使用高德地图API获取区县
+                    // 使用高德地图API获取区县及其adcode
                     try {
                         const url = `https://restapi.amap.com/v3/config/district?key=${AMAP_KEY}&keywords=${city}&subdistrict=1&extensions=base`;
                         const response = await fetch(url);
@@ -436,6 +439,7 @@
                                 districts.forEach(district => {
                                     const option = document.createElement('option');
                                     option.value = district.name;
+                                    option.setAttribute('data-adcode', district.adcode); // 存储adcode
                                     option.textContent = district.name;
                                     districtSelect.appendChild(option);
                                 });
@@ -455,6 +459,9 @@
             });
 
             districtSelect.addEventListener('change', function() {
+                const selected = this.options[this.selectedIndex];
+                selectedDistrict = this.value;
+                selectedAdcode = selected ? selected.getAttribute('data-adcode') : '';
                 searchBtn.disabled = !this.value && districtSelect.options.length > 1;
             });
         });
@@ -598,21 +605,23 @@
             clearMarkers();
 
             try {
-                // 第一步：获取地铁站（指定城市范围避免跨城市）
-                const url = `https://restapi.amap.com/v3/place/text?key=${AMAP_KEY}&keywords=地铁站&city=${city}&offset=20&page=1`;
-                const response = await fetch(url);
+                // 第一步：获取地铁站
+                // 如果有adcode（区县级），使用adcode；否则使用city
+                let searchUrl;
+                if (selectedAdcode) {
+                    // 使用adcode精确搜索区县级别，添加citylimit限制范围
+                    searchUrl = `https://restapi.amap.com/v3/place/text?key=${AMAP_KEY}&keywords=地铁站&city=${selectedAdcode}&citylimit=true&offset=20&page=1`;
+                } else {
+                    // 城市级别搜索
+                    searchUrl = `https://restapi.amap.com/v3/place/text?key=${AMAP_KEY}&keywords=地铁站&city=${city}&citylimit=true&offset=20&page=1`;
+                }
+
+                const response = await fetch(searchUrl);
                 const data = await response.json();
                 let stations = data.pois || [];
 
-                // 如果选择了区县，过滤出该区县的地铁站
-                if (district) {
-                    stations = stations.filter(station =>
-                        station.address && station.address.includes(district)
-                    );
-                }
-
                 if (stations.length === 0) {
-                    listDiv.innerHTML = '<div class="empty">该区域未找到地铁站</div>';
+                    listDiv.innerHTML = `<div class="empty">该区域未找到地铁站<br><small>尝试选择其他区县或城市</small></div>`;
                     return;
                 }
 
@@ -630,7 +639,7 @@
 
                     pois.forEach(poi => {
                         const id = poi.id;
-                        const rating = parseFloat(poi.biz_ext ? .rating || '0');
+                        const rating = parseFloat(poi.biz_ext?.rating || '0');
 
                         // 只添加评分4.0以上的餐馆
                         if (!restaurantSet.has(id) && rating >= 4.0) {

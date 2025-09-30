@@ -48,7 +48,7 @@ def search_restaurants_nearby(location, radius=1000):
 
 if __name__ == "__main__":
     # 第一步：获取西安所有地铁站
-    stations = get_metro_stations("西安")
+    stations = get_metro_stations("长安区")
     print(f"找到 {len(stations)} 个地铁站")
 
     # 第二步：取前 3 个地铁站做测试
